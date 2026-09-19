@@ -31,10 +31,27 @@ MySQL 连接：`inkmill` / `inkmill` / `inkmill`（库名/用户/密码）
 ## 领域实体（JSON 驼峰）
 
 1. **Workshop**：`name`, `site`, `notes`
-2. **Mill**：`workshopId`, `millCode`（同车间唯一）, `pigmentBase`, `bowlLiters`, `status`（`grinding` \| `idle` \| `wash`）
+2. **Mill**：`workshopId`, `millCode`（同车间唯一）, `pigmentBase`, `bowlLiters`, `status`（`grinding` \| `idle` \| `wash`），列表另带 `hasOpenPass`（该研磨机是否存在进行中的研磨遍次，**由服务端聚合给出**）
 3. **ViscositySample**：`millId`, `sampledAt`, `viscosityPaS`（须 &gt; 0，否则 HTTP 400）, `tempC`, `notes`
-4. **GrindPass**：`millId`, `startedAt`, `passNo`（≥ 1）, `durationMin`（&gt; 0）, `mediaType`, `operatorName`
+4. **GrindPass**：`millId`, `startedAt`, `endedAt`（可空，空 = 进行中）, `open`（服务端依据 `endedAt` 给出）, `passNo`（≥ 1，**不做查重**）, `durationMin`（进行中固定 0；结束时由服务端计算）, `mediaType`, `operatorName`
 5. **Dashboard**：`workshopTotal`, `grindingMillCount`, `samplesLast24h`, `passesLast7d`
+
+### 研磨遍次：进行中 / 已结束
+
+遍次不是靠 `passNo` 区分，而是靠 `endedAt` 是否为空：
+
+- **新建（开始）** `POST /api/grind-passes`：
+  - 机台 `status` 必须为 `grinding`，否则 **409**（中文消息）；
+  - 同一台研磨机同时最多一条进行中遍次，否则 **409**（数据库层有唯一索引兜底并发）；
+  - 新建即为进行中：`endedAt` 为空、`durationMin` 必须为 0。
+- **结束** `POST /api/grind-passes/{id}/end`，请求体 `{ endedAt, durationMin? }`：
+  - `endedAt` 必须晚于 `startedAt`，否则 400；
+  - 服务端用 `endedAt - startedAt` 计算 `durationMin`（分钟，2 位小数，须 &gt; 0）并写库，**不信任客户端时长**；
+  - 若请求另带 `durationMin` 且与计算值相差超过 1 分钟，返回 **400 且不写入**；
+  - 已结束的遍次不能重复结束（409）。
+- **删除** `DELETE /api/grind-passes/{id}`：已结束遍次**禁止删除**（409）；仅进行中可删。
+- **列表** `GET /api/grind-passes`：每行带 `open` 标记与 `endedAt`，均由服务端给出。
+- **研磨机列表** `GET /api/mills`：每行带 `hasOpenPass`，前端不得自行计数。
 
 ## 快速启动（Docker）
 
@@ -50,8 +67,9 @@ docker compose up --build -d
 
 1. 等待 MySQL 就绪（`DB_HOST=mysql`）
 2. SQLAlchemy `create_all` 建表
-3. `SEED_ON_START=true` 时写入演示数据
-4. gunicorn 监听 `0.0.0.0:9200`
+3. 幂等轻量迁移：为旧库补 `grind_passes.ended_at`、回填历史行、建立“同一机台至多一条进行中”的唯一索引
+4. `SEED_ON_START=true` 时写入演示数据（M-01 有一条进行中遍次，M-02 只有已结束遍次）
+5. gunicorn 监听 `0.0.0.0:9200`
 
 健康检查：`GET /api/health` → `{"status":"ok","service":"InkMill"}`
 

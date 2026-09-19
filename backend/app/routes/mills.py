@@ -2,9 +2,11 @@ from decimal import Decimal
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from app.database import SessionLocal
+from app.models.grind_pass import GrindPass
 from app.models.mill import MILL_STATUSES, Mill
 from app.models.workshop import Workshop
 from app.serializers import mill_json
@@ -46,7 +48,17 @@ def list_mills():
     db = SessionLocal()
     try:
         rows = db.query(Mill).order_by(Mill.id.desc()).all()
-        return jsonify([mill_json(r) for r in rows])
+        # 一次聚合查出所有“存在进行中遍次”的机台，结果随接口返回
+        open_mill_ids = {
+            mid
+            for (mid,) in db.query(GrindPass.mill_id)
+            .filter(GrindPass.ended_at.is_(None))
+            .distinct()
+            .all()
+        }
+        return jsonify(
+            [mill_json(r, has_open_pass=r.id in open_mill_ids) for r in rows]
+        )
     finally:
         db.close()
 

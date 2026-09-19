@@ -85,6 +85,7 @@ def seed() -> None:
                     GrindPass(
                         mill_id=m1.id,
                         started_at=now - timedelta(hours=3),
+                        ended_at=now - timedelta(hours=2, minutes=15),
                         pass_no=1,
                         duration_min=Decimal("45.00"),
                         media_type="0.8mm 锆珠",
@@ -93,14 +94,27 @@ def seed() -> None:
                     GrindPass(
                         mill_id=m1.id,
                         started_at=now - timedelta(hours=2),
+                        ended_at=now - timedelta(hours=1, minutes=22),
                         pass_no=2,
                         duration_min=Decimal("38.00"),
                         media_type="0.8mm 锆珠",
                         operator_name="张研磨",
                     ),
+                    # M-01 正在研磨：保留一条进行中遍次（endedAt 为空、时长 0）
+                    GrindPass(
+                        mill_id=m1.id,
+                        started_at=now - timedelta(minutes=20),
+                        ended_at=None,
+                        pass_no=3,
+                        duration_min=Decimal("0.00"),
+                        media_type="0.8mm 锆珠",
+                        operator_name="张研磨",
+                    ),
+                    # M-02 待机：只有已结束遍次
                     GrindPass(
                         mill_id=m2.id,
                         started_at=now - timedelta(days=5),
+                        ended_at=now - timedelta(days=5) + timedelta(minutes=60),
                         pass_no=1,
                         duration_min=Decimal("60.00"),
                         media_type="1.0mm 玻璃珠",

@@ -3,10 +3,13 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
 from app.config import settings
+from app.migrate import run_light_migrations
 from app.routes import auth, dashboard, grind_passes, mills, viscosity_samples, workshops
 
 
 def create_app() -> Flask:
+    run_light_migrations()
+
     app = Flask(__name__)
     app.config["JWT_SECRET_KEY"] = settings.jwt_secret
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = settings.jwt_access_token_expires

@@ -15,8 +15,13 @@ class GrindPass(Base):
         Integer, ForeignKey("mills.id", ondelete="CASCADE"), nullable=False
     )
     started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # 为空表示该遍次仍在进行中；结束接口写入后视为已结束
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pass_no: Mapped[int] = mapped_column(Integer, nullable=False)
-    duration_min: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    # 进行中固定为 0；结束时由服务端按 ended_at - started_at 计算（分钟）
+    duration_min: Mapped[Decimal] = mapped_column(
+        Numeric(8, 2), nullable=False, default=Decimal("0")
+    )
     media_type: Mapped[str] = mapped_column(String(64), nullable=False)
     operator_name: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

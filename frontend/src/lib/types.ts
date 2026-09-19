@@ -23,6 +23,7 @@ export interface Mill {
   pigmentBase: string;
   bowlLiters: number;
   status: MillStatus;
+  hasOpenPass: boolean;
 }
 
 export interface ViscositySample {
@@ -38,6 +39,8 @@ export interface GrindPass {
   id: number;
   millId: number;
   startedAt: string;
+  endedAt: string | null;
+  open: boolean;
   passNo: number;
   durationMin: number;
   mediaType: string;
