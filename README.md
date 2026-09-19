@@ -31,10 +31,22 @@ MySQL 连接：`inkmill` / `inkmill` / `inkmill`（库名/用户/密码）
 ## 领域实体（JSON 驼峰）
 
 1. **Workshop**：`name`, `site`, `notes`
-2. **Mill**：`workshopId`, `millCode`（同车间唯一）, `pigmentBase`, `bowlLiters`, `status`（`grinding` \| `idle` \| `wash`）
+2. **Mill**：`workshopId`, `millCode`（同车间唯一）, `pigmentBase`, `bowlLiters`, `status`（`grinding` \| `idle` \| `wash`）, `hasOpenPass`（是否有进行中遍次，接口给出）
 3. **ViscositySample**：`millId`, `sampledAt`, `viscosityPaS`（须 &gt; 0，否则 HTTP 400）, `tempC`, `notes`
-4. **GrindPass**：`millId`, `startedAt`, `passNo`（≥ 1）, `durationMin`（&gt; 0）, `mediaType`, `operatorName`
+4. **GrindPass**：`millId`, `startedAt`, `endedAt`（可空，空 = 进行中）, `open`（是否进行中，接口给出）, `passNo`（≥ 1）, `durationMin`（分钟，结束时由服务端计算）, `mediaType`, `operatorName`
 5. **Dashboard**：`workshopTotal`, `grindingMillCount`, `samplesLast24h`, `passesLast7d`
+
+## 研磨遍次生命周期
+
+遍次分**进行中**（`endedAt` 为空，`open=true`）与**已结束**两种状态，规则均由服务端强制：
+
+- **新建**（`POST /api/grind-passes`）：即创建一条进行中遍次。研磨机 `status` 必须为 `grinding`，否则 409；同一研磨机同时最多一条进行中遍次，已有进行中时再建返回 409；进行中创建时 `durationMin` 允许为 0。
+- **结束**（`POST /api/grind-passes/<id>/end`）：`endedAt` 必须晚于 `startedAt`（缺省取服务器当前时间）。服务端按起止时间之差计算 `durationMin`（分钟，必须 &gt; 0）并落库，**不采用客户端上报的时长**；若请求另带 `durationMin` 且与计算值相差超过 1 分钟，返回 400 且不写入。已结束的遍次重复结束返回 409。
+- **修改**（`PUT /api/grind-passes/<id>`）：仅进行中遍次可改，已结束返回 409。
+- **删除**（`DELETE /api/grind-passes/<id>`）：已结束遍次禁止删除，返回 409；进行中可删。
+- **列表**：每行带 `open` 与 `endedAt`；研磨机列表带 `hasOpenPass`，均由服务端给出，前端不自行统计。
+
+种子数据中 M-01 有一条进行中遍次（另有若干已结束），M-02 只有已结束遍次。
 
 ## 快速启动（Docker）
 

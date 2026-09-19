@@ -5,12 +5,23 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError
 
 from app.database import SessionLocal
+from app.models.grind_pass import GrindPass
 from app.models.mill import MILL_STATUSES, Mill
 from app.models.workshop import Workshop
 from app.serializers import mill_json
 from app.utils import error
 
 bp = Blueprint("mills", __name__, url_prefix="/api/mills")
+
+
+def _open_pass_mill_ids(db) -> set[int]:
+    rows = (
+        db.query(GrindPass.mill_id)
+        .filter(GrindPass.ended_at.is_(None))
+        .distinct()
+        .all()
+    )
+    return {r[0] for r in rows}
 
 
 def _validate(body: dict) -> str | None:
@@ -46,7 +57,8 @@ def list_mills():
     db = SessionLocal()
     try:
         rows = db.query(Mill).order_by(Mill.id.desc()).all()
-        return jsonify([mill_json(r) for r in rows])
+        open_ids = _open_pass_mill_ids(db)
+        return jsonify([mill_json(r, r.id in open_ids) for r in rows])
     finally:
         db.close()
 
@@ -75,7 +87,7 @@ def create_mill():
             db.rollback()
             return error("该车间下研磨机编号已存在", 400)
         db.refresh(row)
-        return jsonify(mill_json(row)), 201
+        return jsonify(mill_json(row, row.id in _open_pass_mill_ids(db))), 201
     finally:
         db.close()
 
@@ -105,7 +117,7 @@ def update_mill(item_id: int):
             db.rollback()
             return error("该车间下研磨机编号已存在", 400)
         db.refresh(row)
-        return jsonify(mill_json(row))
+        return jsonify(mill_json(row, row.id in _open_pass_mill_ids(db)))
     finally:
         db.close()
 

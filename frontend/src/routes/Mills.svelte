@@ -92,7 +92,7 @@
 
 <header class="page-head">
   <h1>研磨机</h1>
-  <p>机台编号在同一车间内唯一，状态：研磨 / 待机 / 清洗</p>
+  <p>机台编号在同一车间内唯一，状态：研磨 / 待机 / 清洗；进行中遍次由接口给出</p>
 </header>
 
 {#if error}
@@ -142,6 +142,7 @@
         <th>基料</th>
         <th>容量(L)</th>
         <th>状态</th>
+        <th>进行中遍次</th>
         <th></th>
       </tr>
     </thead>
@@ -154,13 +155,20 @@
           <td>{row.pigmentBase}</td>
           <td>{row.bowlLiters}</td>
           <td><span class="badge {row.status}">{millStatusLabel[row.status]}</span></td>
+          <td>
+            {#if row.hasOpenPass}
+              <span class="badge grinding">有</span>
+            {:else}
+              <span class="badge idle">无</span>
+            {/if}
+          </td>
           <td class="ops">
             <button class="link-btn" on:click={() => edit(row)}>编辑</button>
             <button class="link-btn danger" on:click={() => remove(row.id)}>删除</button>
           </td>
         </tr>
       {:else}
-        <tr><td colspan="7">暂无数据</td></tr>
+        <tr><td colspan="8">暂无数据</td></tr>
       {/each}
     </tbody>
   </table>

@@ -15,6 +15,7 @@ class GrindPass(Base):
         Integer, ForeignKey("mills.id", ondelete="CASCADE"), nullable=False
     )
     started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pass_no: Mapped[int] = mapped_column(Integer, nullable=False)
     duration_min: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
     media_type: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -32,7 +32,7 @@ def workshop_json(row: Workshop) -> dict:
     }
 
 
-def mill_json(row: Mill) -> dict:
+def mill_json(row: Mill, has_open_pass: bool = False) -> dict:
     return {
         "id": row.id,
         "workshopId": row.workshop_id,
@@ -40,6 +40,7 @@ def mill_json(row: Mill) -> dict:
         "pigmentBase": row.pigment_base,
         "bowlLiters": _num(row.bowl_liters) or 0,
         "status": row.status,
+        "hasOpenPass": has_open_pass,
     }
 
 
@@ -59,6 +60,8 @@ def grind_pass_json(row: GrindPass) -> dict:
         "id": row.id,
         "millId": row.mill_id,
         "startedAt": dt_to_json(row.started_at),
+        "endedAt": dt_to_json(row.ended_at),
+        "open": row.ended_at is None,
         "passNo": row.pass_no,
         "durationMin": _num(row.duration_min) or 0,
         "mediaType": row.media_type,
